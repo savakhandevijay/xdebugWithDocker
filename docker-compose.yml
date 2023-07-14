@@ -1,0 +1,45 @@
+version: "3.9"
+services:
+    php:
+        container_name: php
+        platform: linux/x86_64 # this works on for Mac m1 https://stackoverflow.com/a/69075554
+        image: php:fpm-alpine3.18
+        working_dir: /var/www
+        volumes:
+            - ./src/www:/var/www
+            - ./logs/php:/var/logs/php
+            - ./php/configs/xdebug.ini:/usr/local/etc/php/conf.d/xdebug.ini
+            - ./php/configs/error_reporting.ini:/usr/local/etc/php/conf.d/error_reporting.ini
+        expose:
+            - 9003
+        extra_hosts:
+            - "host.docker.internal:host-gateway"
+        networks:
+            - localhost
+    nginx:
+        container_name: nginx
+        image: nginx:alpine3.17
+        depends_on:
+            - php
+        volumes:
+            - ./src/www:/var/www
+            - ./logs/nginx:/var/log/nginx
+            - ./nginx/conf.d:/etc/nginx/conf.d
+            - ./nginx/ssl:/etc/nginx/ssl
+        ports:
+            - ${APP_HTTP_PORT}:80
+            - ${APP_HTTPS_PORT}:443            
+        restart: always  
+        networks:
+            - localhost
+networks:
+    localhost:
+        driver: bridge
+        name: localhost
+        attachable: true
+        ipam:
+            driver: default
+            config:
+                - subnet: 172.18.0.0/16
+                  ip_range: 172.18.5.0/24
+                  gateway: 172.18.0.2
